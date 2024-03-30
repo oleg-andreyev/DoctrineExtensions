@@ -12,8 +12,9 @@ namespace Gedmo\Mapping\Event\Adapter;
 use Doctrine\Common\EventArgs;
 use Doctrine\Deprecations\Deprecation;
 use Doctrine\ODM\MongoDB\DocumentManager;
-use Doctrine\ODM\MongoDB\Event\LifecycleEventArgs;
 use Doctrine\ODM\MongoDB\Mapping\ClassMetadata;
+use Doctrine\ODM\MongoDB\UnitOfWork as ODMUnitOfWork;
+use Doctrine\ORM\UnitOfWork as ORMUnitOfWork;
 use Gedmo\Exception\RuntimeException;
 use Gedmo\Mapping\Event\AdapterInterface;
 
@@ -142,35 +143,15 @@ class ODM implements AdapterInterface
         return $uow->getScheduledDocumentDeletions();
     }
 
-    public function setOriginalObjectProperty($uow, $object, $property, $value)
+    public function setOriginalObjectProperty($uow, $object, $property, mixed $value)
     {
         $uow->setOriginalDocumentProperty(spl_object_hash($object), $property, $value);
     }
 
-    public function clearObjectChangeSet($uow, $object)
+    public function clearObjectChangeSet(ODMUnitOfWork|ORMUnitOfWork $uow, object $object)
     {
+        assert($uow instanceof ODMUnitOfWork);
+
         $uow->clearDocumentChangeSet(spl_object_hash($object));
-    }
-
-    /**
-     * @deprecated to be removed in 4.0, use custom lifecycle event classes instead.
-     *
-     * Creates a ODM specific LifecycleEventArgs.
-     *
-     * @param object          $document
-     * @param DocumentManager $documentManager
-     *
-     * @return LifecycleEventArgs
-     */
-    public function createLifecycleEventArgsInstance($document, $documentManager)
-    {
-        Deprecation::trigger(
-            'gedmo/doctrine-extensions',
-            'https://github.com/doctrine-extensions/DoctrineExtensions/pull/2649',
-            'Using "%s()" method is deprecated since gedmo/doctrine-extensions 3.15 and will be removed in version 4.0.',
-            __METHOD__
-        );
-
-        return new LifecycleEventArgs($document, $documentManager);
     }
 }

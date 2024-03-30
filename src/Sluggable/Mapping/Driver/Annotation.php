@@ -70,7 +70,6 @@ class Annotation extends AbstractAnnotationDriver
         foreach ($class->getProperties() as $property) {
             if ($meta->isMappedSuperclass && !$property->isPrivate()
                 || $meta->isInheritedField($property->name)
-                || isset($meta->associationMappings[$property->name]['inherited'])
             ) {
                 continue;
             }
@@ -91,9 +90,9 @@ class Annotation extends AbstractAnnotationDriver
     }
 
     /**
-     * @internal
-     *
      * @return array<string, SlugHandler[]>
+     *
+     * @internal
      */
     protected function getSlugHandlers(\ReflectionProperty $property, Slug $slug, ClassMetadata $meta): array
     {

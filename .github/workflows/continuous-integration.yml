@@ -21,10 +21,9 @@ jobs:
           - 27017:27017
 
     strategy:
+      fail-fast: false
       matrix:
         php-version:
-          - "7.4"
-          - "8.0"
           - "8.1"
           - "8.2"
           - "8.3"
@@ -32,9 +31,12 @@ jobs:
           - "highest"
         include:
           - deps: "lowest"
-            php-version: "7.4"
-          - deps: "highest"
             php-version: "8.1"
+          - deps: "highest"
+            php-version: "8.3"
+          - deps: "highest"
+            php-version: "8.4"
+            allow_failures: true
 
     steps:
       - name: "Checkout"
@@ -51,17 +53,21 @@ jobs:
 
       # Remove PHP-CS-Fixer to avoid conflicting dependency ranges (i.e. doctrine/annotations)
       - name: "Remove PHP-CS-Fixer"
+        continue-on-error: "${{ matrix.allow_failures }}"
         run: "composer remove --dev --no-update friendsofphp/php-cs-fixer"
 
       - name: "Install dependencies with Composer"
         uses: "ramsey/composer-install@v2"
+        continue-on-error: "${{ matrix.allow_failures }}"
         with:
           dependency-versions: "${{ matrix.deps }}"
 
       - name: "Run PHPUnit"
+        continue-on-error: "${{ matrix.allow_failures }}"
         run: "vendor/bin/phpunit -c tests --coverage-clover coverage.xml"
 
       - name: "Upload coverage file"
+        if: always()
         uses: "actions/upload-artifact@v4"
         with:
           name: "${{ github.job }}-${{ matrix.php-version }}-${{ matrix.deps }}-coverage"

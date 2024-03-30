@@ -15,51 +15,30 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 
-/**
- * @ORM\Entity
- */
 #[ORM\Entity]
 class WithoutInterface
 {
     /**
      * @var int|null
-     *
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
      */
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
-    private $id;
+    private ?int $id = null;
 
-    /**
-     * @ORM\Column(type="string", length=128)
-     */
     #[ORM\Column(type: Types::STRING, length: 128)]
     private ?string $title = null;
 
     /**
-     * @var \DateTime|null
-     *
-     * @Gedmo\Timestampable(on="create")
-     *
-     * @ORM\Column(type="date")
+     * @var \DateTimeInterface|null
      */
     #[Gedmo\Timestampable(on: 'create')]
     #[ORM\Column(type: Types::DATE_MUTABLE)]
-    private $created;
+    private ?\DateTimeInterface $created = null;
 
-    /**
-     * @var \DateTime|null
-     *
-     * @ORM\Column(type="datetime")
-     *
-     * @Gedmo\Timestampable(on="update")
-     */
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     #[Gedmo\Timestampable(on: 'update')]
-    private $updated;
+    private ?\DateTimeInterface $updated = null;
 
     public function getId(): ?int
     {
@@ -76,12 +55,12 @@ class WithoutInterface
         return $this->title;
     }
 
-    public function getCreated(): ?\DateTime
+    public function getCreated(): ?\DateTimeInterface
     {
         return $this->created;
     }
 
-    public function getUpdated(): ?\DateTime
+    public function getUpdated(): ?\DateTimeInterface
     {
         return $this->updated;
     }

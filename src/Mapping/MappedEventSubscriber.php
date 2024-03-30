@@ -19,7 +19,6 @@ use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ODM\MongoDB\Mapping\ClassMetadata as DocumentClassMetadata;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata as EntityClassMetadata;
-use Doctrine\ORM\Mapping\ClassMetadataInfo as LegacyEntityClassMetadata;
 use Doctrine\Persistence\Mapping\AbstractClassMetadataFactory;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
@@ -243,13 +242,13 @@ abstract class MappedEventSubscriber implements EventSubscriber
      */
     public function loadMetadataForObjectClass(ObjectManager $objectManager, $metadata)
     {
-        assert($metadata instanceof DocumentClassMetadata || $metadata instanceof EntityClassMetadata || $metadata instanceof LegacyEntityClassMetadata);
+        assert($metadata instanceof DocumentClassMetadata || $metadata instanceof EntityClassMetadata);
 
         $factory = $this->getExtensionMetadataFactory($objectManager);
 
         try {
             $config = $factory->getExtensionMetadata($metadata);
-        } catch (\ReflectionException $e) {
+        } catch (\ReflectionException) {
             // entity\document generator is running
             $config = []; // will not store a cached version, to remap later
         }
@@ -268,7 +267,7 @@ abstract class MappedEventSubscriber implements EventSubscriber
      */
     protected function getEventAdapter(EventArgs $args)
     {
-        $class = get_class($args);
+        $class = $args::class;
         if (preg_match('@Doctrine\\\([^\\\]+)@', $class, $m) && in_array($m[1], ['ODM', 'ORM'], true)) {
             if (!isset($this->adapters[$m[1]])) {
                 $adapterClass = $this->getNamespace().'\\Mapping\\Event\\Adapter\\'.$m[1];
@@ -303,15 +302,13 @@ abstract class MappedEventSubscriber implements EventSubscriber
      *
      * @param object $object
      * @param string $field
-     * @param mixed  $oldValue
-     * @param mixed  $newValue
      *
      * @return void
      */
-    protected function setFieldValue(AdapterInterface $adapter, $object, $field, $oldValue, $newValue)
+    protected function setFieldValue(AdapterInterface $adapter, $object, $field, mixed $oldValue, mixed $newValue)
     {
         $manager = $adapter->getObjectManager();
-        $meta = $manager->getClassMetadata(get_class($object));
+        $meta = $manager->getClassMetadata($object::class);
         $uow = $manager->getUnitOfWork();
 
         $meta->getReflectionProperty($field)->setValue($object, $newValue);
@@ -354,7 +351,7 @@ abstract class MappedEventSubscriber implements EventSubscriber
 
         if ($objectManager instanceof EntityManagerInterface || $objectManager instanceof DocumentManager) {
             $metadataFactory = $objectManager->getMetadataFactory();
-            $getCache = \Closure::bind(static fn (AbstractClassMetadataFactory $metadataFactory): ?CacheItemPoolInterface => $metadataFactory->getCache(), null, \get_class($metadataFactory));
+            $getCache = \Closure::bind(static fn (AbstractClassMetadataFactory $metadataFactory): ?CacheItemPoolInterface => $metadataFactory->getCache(), null, $metadataFactory::class);
 
             $metadataCache = $getCache($metadataFactory);
 

@@ -12,8 +12,9 @@ namespace Gedmo\Tree\Strategy\ORM;
 use Doctrine\DBAL\Connection;
 use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Mapping\AssociationMapping;
 use Doctrine\ORM\Mapping\ClassMetadata as ORMClassMetadata;
-use Doctrine\ORM\Mapping\ClassMetadataInfo;
+use Doctrine\ORM\Mapping\ToOneOwningSideMapping;
 use Doctrine\ORM\Query;
 use Doctrine\Persistence\Mapping\AbstractClassMetadataFactory;
 use Doctrine\Persistence\Mapping\ClassMetadata;
@@ -127,13 +128,12 @@ class Closure implements Strategy
                 'inversedBy' => null,
                 'targetEntity' => $meta->getName(),
                 'cascade' => null,
-                'fetch' => ClassMetadataInfo::FETCH_LAZY,
+                'fetch' => ORMClassMetadata::FETCH_LAZY,
             ];
             $closureMetadata->mapManyToOne($ancestorMapping);
             $closureMetadata->reflFields['ancestor'] = $cmf
                 ->getReflectionService()
-                ->getAccessibleProperty($closureMetadata->getName(), 'ancestor')
-            ;
+                ->getAccessibleProperty($closureMetadata->getName(), 'ancestor');
         }
 
         if (!$closureMetadata->hasAssociation('descendant')) {
@@ -165,13 +165,12 @@ class Closure implements Strategy
                 'inversedBy' => null,
                 'targetEntity' => $meta->getName(),
                 'cascade' => null,
-                'fetch' => ClassMetadataInfo::FETCH_LAZY,
+                'fetch' => ORMClassMetadata::FETCH_LAZY,
             ];
             $closureMetadata->mapManyToOne($descendantMapping);
             $closureMetadata->reflFields['descendant'] = $cmf
                 ->getReflectionService()
-                ->getAccessibleProperty($closureMetadata->getName(), 'descendant')
-            ;
+                ->getAccessibleProperty($closureMetadata->getName(), 'descendant');
         }
 
         if (!$this->hasClosureTableUniqueConstraint($closureMetadata)) {
@@ -215,7 +214,7 @@ class Closure implements Strategy
 
         if (!$hasTheUserExplicitlyDefinedMapping) {
             $metadataFactory = $em->getMetadataFactory();
-            $getCache = \Closure::bind(static fn (AbstractClassMetadataFactory $metadataFactory): ?CacheItemPoolInterface => $metadataFactory->getCache(), null, \get_class($metadataFactory));
+            $getCache = \Closure::bind(static fn (AbstractClassMetadataFactory $metadataFactory): ?CacheItemPoolInterface => $metadataFactory->getCache(), null, $metadataFactory::class);
 
             $metadataCache = $getCache($metadataFactory);
 
@@ -259,7 +258,7 @@ class Closure implements Strategy
     public function processPostUpdate($em, $entity, AdapterInterface $ea)
     {
         \assert($em instanceof EntityManagerInterface);
-        $meta = $em->getClassMetadata(get_class($entity));
+        $meta = $em->getClassMetadata($entity::class);
         $config = $this->listener->getConfiguration($em, $meta->getName());
 
         // Process TreeLevel field value
@@ -281,7 +280,7 @@ class Closure implements Strategy
         $emHash = spl_object_id($em);
 
         while ($node = array_shift($this->pendingChildNodeInserts[$emHash])) {
-            $meta = $em->getClassMetadata(get_class($node));
+            $meta = $em->getClassMetadata($node::class);
             $config = $this->listener->getConfiguration($em, $meta->getName());
 
             $identifier = $meta->getSingleIdentifierFieldName();
@@ -365,7 +364,7 @@ class Closure implements Strategy
      */
     public function processScheduledUpdate($em, $node, AdapterInterface $ea)
     {
-        $meta = $em->getClassMetadata(get_class($node));
+        $meta = $em->getClassMetadata($node::class);
         $config = $this->listener->getConfiguration($em, $meta->getName());
         $uow = $em->getUnitOfWork();
         $changeSet = $uow->getEntityChangeSet($node);
@@ -457,18 +456,15 @@ class Closure implements Strategy
         }
     }
 
-    /**
-     * @param array<string, mixed> $association
-     *
-     * @return string|null
-     */
-    protected function getJoinColumnFieldName($association)
+    protected function getJoinColumnFieldName(AssociationMapping $association): ?string
     {
-        if (count($association['joinColumnFieldNames']) > 1) {
+        assert($association instanceof ToOneOwningSideMapping);
+
+        if (count($association->joinColumnFieldNames) > 1) {
             throw new RuntimeException('More association on field '.$association['fieldName']);
         }
 
-        return array_shift($association['joinColumnFieldNames']);
+        return current($association->joinColumnFieldNames);
     }
 
     /**
@@ -486,7 +482,7 @@ class Closure implements Strategy
 
             assert(null !== $first);
 
-            $meta = $em->getClassMetadata(get_class($first));
+            $meta = $em->getClassMetadata($first::class);
             unset($first);
             $identifier = $meta->getIdentifier();
             $mapping = $meta->getFieldMapping($identifier[0]);

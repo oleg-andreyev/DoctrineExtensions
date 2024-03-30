@@ -16,65 +16,36 @@ use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 use Gedmo\Timestampable\Timestampable;
 
-/**
- * @ORM\Entity
- */
 #[ORM\Entity]
 class Comment implements Timestampable
 {
     /**
      * @var int|null
-     *
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
      */
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
-    private $id;
+    private ?int $id = null;
 
-    /**
-     * @ORM\Column(name="message", type="text")
-     */
     #[ORM\Column(name: 'message', type: Types::TEXT)]
     private ?string $message = null;
 
     /**
      * @var Article|null
-     *
-     * @ORM\ManyToOne(targetEntity="Gedmo\Tests\Timestampable\Fixture\Article", inversedBy="comments")
      */
     #[ORM\ManyToOne(targetEntity: Article::class, inversedBy: 'comments')]
-    private $article;
+    private ?Article $article = null;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $status = null;
 
-    /**
-     * @var \DateTime|null
-     *
-     * @ORM\Column(name="closed", type="datetime", nullable=true)
-     *
-     * @Gedmo\Timestampable(on="change", field="status", value=1)
-     */
     #[ORM\Column(name: 'closed', type: Types::DATETIME_MUTABLE, nullable: true)]
     #[Gedmo\Timestampable(on: 'change', field: 'status', value: 1)]
-    private $closed;
+    private ?\DateTimeInterface $closed = null;
 
-    /**
-     * @var \DateTime|null
-     *
-     * @ORM\Column(name="modified", type="time")
-     *
-     * @Gedmo\Timestampable(on="update")
-     */
     #[ORM\Column(name: 'modified', type: Types::TIME_MUTABLE)]
     #[Gedmo\Timestampable(on: 'update')]
-    private $modified;
+    private ?\DateTimeInterface $modified = null;
 
     /**
      * @param Article|ArticleCarbon $article
@@ -109,12 +80,12 @@ class Comment implements Timestampable
         return $this->message;
     }
 
-    public function getModified(): ?\DateTime
+    public function getModified(): ?\DateTimeInterface
     {
         return $this->modified;
     }
 
-    public function getClosed(): ?\DateTime
+    public function getClosed(): ?\DateTimeInterface
     {
         return $this->closed;
     }

@@ -14,7 +14,6 @@ use Doctrine\Common\Annotations\Reader;
 use Doctrine\Deprecations\Deprecation;
 use Doctrine\ODM\MongoDB\Mapping\ClassMetadata as DocumentClassMetadata;
 use Doctrine\ORM\Mapping\ClassMetadata as EntityClassMetadata;
-use Doctrine\ORM\Mapping\ClassMetadataInfo as LegacyEntityClassMetadata;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\Mapping\Driver\DefaultFileLocator;
 use Doctrine\Persistence\Mapping\Driver\MappingDriver;
@@ -68,12 +67,10 @@ class ExtensionMetadataFactory
      */
     protected $annotationReader;
 
-    private ?CacheItemPoolInterface $cacheItemPool = null;
-
     /**
      * @param Reader|AttributeReader|object|null $annotationReader
      */
-    public function __construct(ObjectManager $objectManager, string $extensionNamespace, ?object $annotationReader = null, ?CacheItemPoolInterface $cacheItemPool = null)
+    public function __construct(ObjectManager $objectManager, string $extensionNamespace, ?object $annotationReader = null, private readonly ?CacheItemPoolInterface $cacheItemPool = null)
     {
         if (null !== $annotationReader && !$annotationReader instanceof Reader && !$annotationReader instanceof AttributeReader) {
             Deprecation::trigger(
@@ -91,17 +88,16 @@ class ExtensionMetadataFactory
         $this->extensionNamespace = $extensionNamespace;
         $omDriver = $objectManager->getConfiguration()->getMetadataDriverImpl();
         $this->driver = $this->getDriver($omDriver);
-        $this->cacheItemPool = $cacheItemPool;
     }
 
     /**
      * Reads extension metadata
      *
-     * @param ClassMetadata&(DocumentClassMetadata|EntityClassMetadata|LegacyEntityClassMetadata) $meta
+     * @param ClassMetadata&(DocumentClassMetadata|EntityClassMetadata) $meta
      *
      * @return array<string, mixed> the metadata configuration
      */
-    public function getExtensionMetadata($meta)
+    public function getExtensionMetadata(mixed $meta)
     {
         if ($meta->isMappedSuperclass) {
             return []; // ignore mappedSuperclasses for now
@@ -118,7 +114,7 @@ class ExtensionMetadataFactory
 
                     $class = $this->objectManager->getClassMetadata($parentClass);
 
-                    assert($class instanceof DocumentClassMetadata || $class instanceof EntityClassMetadata || $class instanceof LegacyEntityClassMetadata);
+                    assert($class instanceof DocumentClassMetadata || $class instanceof EntityClassMetadata);
 
                     $extendedMetadata = $this->driver->readExtendedMetadata($class, $config);
 
@@ -132,8 +128,7 @@ class ExtensionMetadataFactory
 
                     $isBaseInheritanceLevel = !$class->isInheritanceTypeNone()
                         && [] === $class->parentClasses
-                        && [] !== $config
-                    ;
+                        && [] !== $config;
                     if ($isBaseInheritanceLevel) {
                         $useObjectName = $class->getName();
                     }
@@ -189,8 +184,8 @@ class ExtensionMetadataFactory
         }
 
         $driver = null;
-        $className = get_class($omDriver);
-        $driverName = substr($className, strrpos($className, '\\') + 1);
+        $className = $omDriver::class;
+        $driverName = substr((string) $className, strrpos((string) $className, '\\') + 1);
         if ($omDriver instanceof MappingDriverChain || 'DriverChain' === $driverName) {
             $driver = new Chain();
             foreach ($omDriver->getDrivers() as $namespace => $nestedOmDriver) {
@@ -202,7 +197,7 @@ class ExtensionMetadataFactory
         } else {
             $driverName = substr($driverName, 0, strpos($driverName, 'Driver'));
             $isSimplified = false;
-            if ('Simplified' === substr($driverName, 0, 10)) {
+            if (str_starts_with($driverName, 'Simplified')) {
                 // support for simplified file drivers
                 $driverName = substr($driverName, 10);
                 $isSimplified = true;
